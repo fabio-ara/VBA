@@ -1,0 +1,81 @@
+name: Funcionalidade
+description: Unidade executável de nova funcionalidade ou alteração funcional.
+title: "[FEATURE] "
+body:
+  - type: dropdown
+    id: estado
+    attributes:
+      label: Estado
+      options:
+        - DISCUSSION
+        - READY
+        - BLOCKED
+    validations:
+      required: true
+  - type: input
+    id: ordem
+    attributes:
+      label: Ordem no plano
+      description: Exemplo P03. Deixe N/A quando não pertencer a plano sequencial.
+      placeholder: P01 ou N/A
+    validations:
+      required: true
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: Resultado observável desta unidade de trabalho.
+    validations:
+      required: true
+  - type: textarea
+    id: contexto
+    attributes:
+      label: Contexto e regras relevantes
+      description: Inclua referências à especificação e decisões necessárias para executar sem recuperar a conversa original.
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo
+      description: O que deve ser alterado nesta Issue.
+    validations:
+      required: true
+  - type: textarea
+    id: fora
+    attributes:
+      label: Fora de escopo
+      description: O que deliberadamente não deve ser feito. Escreva Nenhum quando aplicável.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencias
+    attributes:
+      label: Dependências
+      description: Use referências como #12 ou escreva Nenhuma.
+    validations:
+      required: true
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceitação
+      description: Liste critérios objetivos e verificáveis.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: verificacao
+    attributes:
+      label: Verificação e testes
+      description: Indique análise, teste automatizado, COM ou validação manual esperada.
+    validations:
+      required: true
+  - type: textarea
+    id: documentacao
+    attributes:
+      label: Documentação a atualizar
+      description: Arquivos canônicos afetados ou Nenhuma.
+    validations:
+      required: true

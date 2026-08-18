@@ -1,0 +1,63 @@
+name: Bug ou regressão
+description: Registra defeito observável com reprodução, comportamento esperado e validação de regressão.
+title: "[BUG] "
+body:
+  - type: dropdown
+    id: estado
+    attributes:
+      label: Estado
+      options:
+        - DISCUSSION
+        - READY
+        - BLOCKED
+    validations:
+      required: true
+  - type: textarea
+    id: observado
+    attributes:
+      label: Situação observada
+      description: Descreva exatamente o comportamento incorreto.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Situação esperada
+      description: Descreva o comportamento correto.
+    validations:
+      required: true
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Reprodução mínima
+      description: Passos, dados sintéticos ou condição que reproduz o problema.
+    validations:
+      required: true
+  - type: input
+    id: relacionada
+    attributes:
+      label: Issue/funcionalidade relacionada
+      placeholder: "#12 ou N/A"
+    validations:
+      required: true
+  - type: textarea
+    id: evidencia
+    attributes:
+      label: Evidências disponíveis
+      description: Mensagem de erro, log, captura, diagnóstico COM ou informação do usuário.
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de correção
+      placeholder: |
+        - [ ] O cenário reproduzido deixa de falhar
+        - [ ] O comportamento anterior correto permanece preservado
+    validations:
+      required: true
+  - type: textarea
+    id: regressao
+    attributes:
+      label: Teste de regressão
+      description: Como impedir ou detectar recorrência. Escreva Não aplicável quando justificado.
+    validations:
+      required: true

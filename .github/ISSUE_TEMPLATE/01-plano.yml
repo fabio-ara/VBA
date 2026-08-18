@@ -1,0 +1,52 @@
+name: Plano de implementação
+description: Coordena um conjunto de Issues executáveis em ordem e com dependências explícitas.
+title: "[PLAN] "
+body:
+  - type: dropdown
+    id: estado
+    attributes:
+      label: Estado
+      options:
+        - DISCUSSION
+        - READY
+        - BLOCKED
+    validations:
+      required: true
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo da entrega
+      description: Resultado global que este plano deve produzir.
+    validations:
+      required: true
+  - type: textarea
+    id: decisoes
+    attributes:
+      label: Decisões já aprovadas
+      description: Liste somente decisões consolidadas que condicionam o plano.
+    validations:
+      required: true
+  - type: textarea
+    id: sequencia
+    attributes:
+      label: Sequência de Issues
+      description: Use P01, P02... e referências #N quando as Issues já existirem.
+      placeholder: |
+        P01 - ...
+        P02 - ...
+    validations:
+      required: true
+  - type: textarea
+    id: dependencias
+    attributes:
+      label: Dependências e bloqueios
+      description: Registre dependências reais, informações ausentes ou escreva Nenhuma.
+    validations:
+      required: true
+  - type: textarea
+    id: conclusao
+    attributes:
+      label: Critério de conclusão do plano
+      description: O que deve ser verdadeiro quando todas as unidades forem concluídas.
+    validations:
+      required: true

@@ -1,0 +1,51 @@
+name: Tooling e infraestrutura
+description: Melhoria do fluxo GitHub → local → VBE/Excel, testes, COM, diagnóstico ou automação auxiliar.
+title: "[TOOLING] "
+body:
+  - type: dropdown
+    id: estado
+    attributes:
+      label: Estado
+      options:
+        - DISCUSSION
+        - READY
+        - BLOCKED
+    validations:
+      required: true
+  - type: textarea
+    id: problema
+    attributes:
+      label: Atrito ou limitação atual
+      description: O que está onerando, impedindo ou fragilizando o desenvolvimento.
+    validations:
+      required: true
+  - type: textarea
+    id: resultado
+    attributes:
+      label: Resultado desejado
+      description: Como o fluxo deve funcionar após esta Issue.
+    validations:
+      required: true
+  - type: textarea
+    id: escopo
+    attributes:
+      label: Escopo técnico
+      description: Scripts, integrações ou contratos que podem ser alterados.
+    validations:
+      required: true
+  - type: textarea
+    id: seguranca
+    attributes:
+      label: Restrições de segurança e ambiente
+      description: Admin, DLP, credenciais, dados locais, Excel COM, rede ou outras restrições.
+    validations:
+      required: true
+  - type: textarea
+    id: aceite
+    attributes:
+      label: Critérios de aceitação
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true

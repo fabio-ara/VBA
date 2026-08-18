@@ -4,7 +4,9 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
+import time
 import unicodedata
 from pathlib import Path
 import tkinter as tk
@@ -43,9 +45,10 @@ def exigir_ambiente() -> None:
     ausentes = [nome for nome in ("git", "gh") if shutil.which(nome) is None]
     if ausentes:
         raise RuntimeError("Não encontrado no PATH: " + ", ".join(ausentes))
-    auth = executar(["gh", "auth", "status"])
-    if auth.returncode != 0:
-        raise RuntimeError("O GitHub CLI não está autenticado. Autentique-o uma vez e abra novamente o gerenciador.")
+    if executar(["gh", "auth", "status"]).returncode != 0:
+        raise RuntimeError(
+            "O GitHub CLI não está autenticado. Autentique-o uma vez e abra novamente o gerenciador."
+        )
 
 
 def login_atual() -> str:
@@ -84,7 +87,8 @@ def garantir_template() -> None:
         return
     if not messagebox.askyesno(
         "Preparar template",
-        f"{TEMPLATE_REPO} ainda não está marcado como Template repository.\n\nConfigurar automaticamente agora?",
+        f"{TEMPLATE_REPO} ainda não está marcado como Template repository.\n\n"
+        "Configurar automaticamente agora?",
     ):
         raise RuntimeError("O repositório-base precisa estar marcado como template.")
     ajuste = executar([
@@ -134,7 +138,9 @@ def inicializar_projeto(repo: str, pasta: Path, nome: str, descricao: str, mante
     executar(["git", "add", "-A"], pasta)
     diferencas = executar(["git", "diff", "--cached", "--quiet"], pasta)
     if diferencas.returncode != 0:
-        commit = executar(["git", "commit", "-m", "chore: initialize project from VBA template"], pasta)
+        commit = executar(
+            ["git", "commit", "-m", "chore: initialize project from VBA template"], pasta
+        )
         if commit.returncode != 0:
             raise RuntimeError(commit.stderr.strip() or "Falha no commit de inicialização.")
         push = executar(["git", "push", "origin", "main"], pasta)
@@ -151,8 +157,14 @@ def escolher_pasta(variavel: tk.StringVar) -> None:
         salvar_config(cfg)
 
 
-def criar(parent: tk.Misc, nome_var: tk.StringVar, desc_var: tk.StringVar, vis_var: tk.StringVar,
-          pasta_var: tk.StringVar, mit_var: tk.BooleanVar) -> None:
+def criar(
+    parent: tk.Misc,
+    nome_var: tk.StringVar,
+    desc_var: tk.StringVar,
+    vis_var: tk.StringVar,
+    pasta_var: tk.StringVar,
+    mit_var: tk.BooleanVar,
+) -> None:
     try:
         exigir_ambiente()
         garantir_template()
@@ -162,15 +174,20 @@ def criar(parent: tk.Misc, nome_var: tk.StringVar, desc_var: tk.StringVar, vis_v
         if not nome:
             raise RuntimeError("Informe um nome válido.")
         if original != nome and not messagebox.askyesno(
-            "Normalizar nome", f"O nome no GitHub será:\n\n{nome}\n\nContinuar?", parent=parent
+            "Normalizar nome",
+            f"O nome no GitHub será:\n\n{nome}\n\nContinuar?",
+            parent=parent,
         ):
             return
+
         base = Path(pasta_var.get()).expanduser()
         if not base.is_dir():
             raise RuntimeError("Escolha uma pasta local existente.")
+
         repo = f"{owner}/{nome}"
         if executar(["gh", "repo", "view", repo]).returncode == 0:
             raise RuntimeError(f"O repositório {repo} já existe.")
+
         visibilidade = "--private" if vis_var.get() == "private" else "--public"
         criado = executar([
             "gh", "repo", "create", repo, visibilidade,
@@ -178,24 +195,36 @@ def criar(parent: tk.Misc, nome_var: tk.StringVar, desc_var: tk.StringVar, vis_v
         ])
         if criado.returncode != 0:
             raise RuntimeError(criado.stderr.strip() or "Falha ao criar o repositório.")
+
         ajuste = executar([
             "gh", "api", f"repos/{repo}", "-X", "PATCH",
             "-F", "has_issues=true", "-F", "has_wiki=false",
         ])
         if ajuste.returncode != 0:
             raise RuntimeError(ajuste.stderr.strip() or "Falha ao ajustar o repositório.")
+
         criar_labels(repo)
+
         destino = base / nome
         if destino.exists():
             raise RuntimeError(f"O remoto foi criado, mas a pasta local já existe:\n{destino}")
+
         clone = executar(["gh", "repo", "clone", repo, str(destino)])
         if clone.returncode != 0:
-            raise RuntimeError("O remoto foi criado, mas o clone falhou.\n\n" + clone.stderr.strip())
+            raise RuntimeError(
+                "O remoto foi criado, mas o clone falhou.\n\n" + clone.stderr.strip()
+            )
+
         inicializar_projeto(repo, destino, nome, desc_var.get(), bool(mit_var.get()))
         cfg = carregar_config()
         cfg["base_dir"] = str(base)
         salvar_config(cfg)
-        messagebox.showinfo("Automação criada", f"{repo}\n\nCópia local:\n{destino}", parent=parent)
+
+        messagebox.showinfo(
+            "Automação criada",
+            f"{repo}\n\nCópia local:\n{destino}",
+            parent=parent,
+        )
         nome_var.set("")
         desc_var.set("")
     except Exception as exc:
@@ -210,7 +239,10 @@ def listar_repos(owner: str) -> list[str]:
     ])
     if resultado.returncode != 0:
         raise RuntimeError(resultado.stderr.strip() or "Falha ao listar repositórios.")
-    return sorted((x.strip() for x in resultado.stdout.splitlines() if x.strip()), key=str.lower)
+    return sorted(
+        (x.strip() for x in resultado.stdout.splitlines() if x.strip()),
+        key=str.lower,
+    )
 
 
 def atualizar_lista(combo: ttk.Combobox) -> None:
@@ -220,6 +252,8 @@ def atualizar_lista(combo: ttk.Combobox) -> None:
         combo["values"] = repos
         if repos:
             combo.set(repos[0])
+        else:
+            combo.set("")
     except Exception as exc:
         messagebox.showerror("Erro", str(exc))
 
@@ -234,7 +268,67 @@ def autorizar_exclusao() -> bool:
     return resultado.returncode == 0
 
 
-def excluir(parent: tk.Misc, combo: ttk.Combobox, local_var: tk.BooleanVar, pasta_var: tk.StringVar) -> None:
+def _tornar_gravavel(caminho: Path) -> None:
+    try:
+        os.chmod(caminho, stat.S_IREAD | stat.S_IWRITE)
+    except OSError:
+        pass
+
+
+def _onerror_remocao(func, caminho, exc_info) -> None:
+    alvo = Path(caminho)
+    _tornar_gravavel(alvo)
+    func(caminho)
+
+
+def remover_arvore_windows(caminho: Path, tentativas: int = 5) -> None:
+    """Remove uma árvore local tratando atributos e bloqueios transitórios do Windows."""
+    ultimo_erro: BaseException | None = None
+
+    for tentativa in range(1, tentativas + 1):
+        if not caminho.exists():
+            return
+        try:
+            shutil.rmtree(caminho, onerror=_onerror_remocao)
+            return
+        except (PermissionError, OSError) as exc:
+            ultimo_erro = exc
+
+            for raiz, dirs, arquivos in os.walk(caminho):
+                for nome in arquivos:
+                    _tornar_gravavel(Path(raiz) / nome)
+                for nome in dirs:
+                    _tornar_gravavel(Path(raiz) / nome)
+            _tornar_gravavel(caminho)
+
+            if tentativa < tentativas:
+                time.sleep(0.35 * tentativa)
+
+    if ultimo_erro is not None:
+        raise ultimo_erro
+
+
+def validar_clone_local(local: Path) -> None:
+    if local.resolve() == Path(__file__).resolve().parent:
+        raise RuntimeError("O repositório-base VBA é protegido contra remoção.")
+    if not (local / ".git").exists():
+        raise RuntimeError(
+            "A pasta selecionada não parece ser um clone Git deste fluxo.\n\n"
+            f"{local}"
+        )
+
+
+def remover_clone_local(local: Path) -> None:
+    validar_clone_local(local)
+    remover_arvore_windows(local)
+
+
+def excluir(
+    parent: tk.Misc,
+    combo: ttk.Combobox,
+    local_var: tk.BooleanVar,
+    pasta_var: tk.StringVar,
+) -> None:
     try:
         exigir_ambiente()
         repo = combo.get().strip()
@@ -242,35 +336,111 @@ def excluir(parent: tk.Misc, combo: ttk.Combobox, local_var: tk.BooleanVar, past
             raise RuntimeError("Selecione um repositório.")
         if repo == TEMPLATE_REPO:
             raise RuntimeError("O repositório-modelo é protegido por esta ferramenta.")
+
         nome = repo.split("/", 1)[1]
         digitado = simpledialog.askstring(
             "Confirmação destrutiva",
-            f"Excluir permanentemente:\n\n{repo}\n\nDigite exatamente {nome} para confirmar:",
+            f"Excluir permanentemente:\n\n{repo}\n\n"
+            f"Digite exatamente {nome} para confirmar:",
             parent=parent,
         )
         if digitado != nome:
             messagebox.showinfo("Cancelado", "Exclusão cancelada.", parent=parent)
             return
+
         resultado = executar(["gh", "repo", "delete", repo, "--yes"])
-        if resultado.returncode != 0 and ("delete_repo" in resultado.stderr or "scope" in resultado.stderr.lower()):
+        if resultado.returncode != 0 and (
+            "delete_repo" in resultado.stderr or "scope" in resultado.stderr.lower()
+        ):
             messagebox.showinfo(
                 "Autorizar exclusão",
-                "Será aberta a autenticação do GitHub para conceder a permissão de exclusão. Conclua o fluxo e retorne.",
+                "Será aberta a autenticação do GitHub para conceder a permissão de exclusão. "
+                "Conclua o fluxo e retorne.",
                 parent=parent,
             )
             if not autorizar_exclusao():
                 raise RuntimeError("A autorização de exclusão não foi concluída.")
             resultado = executar(["gh", "repo", "delete", repo, "--yes"])
+
         if resultado.returncode != 0:
             raise RuntimeError(resultado.stderr.strip() or "Falha ao excluir o repositório.")
+
         nota = ""
+        aviso_local = ""
         if local_var.get():
             local = Path(pasta_var.get()).expanduser() / nome
-            if local.is_dir() and (local / ".git").exists():
-                shutil.rmtree(local)
-                nota = f"\n\nPasta local removida:\n{local}"
-        messagebox.showinfo("Excluído", f"Repositório remoto excluído:\n{repo}{nota}", parent=parent)
+            if local.is_dir():
+                try:
+                    remover_clone_local(local)
+                    nota = f"\n\nPasta local removida:\n{local}"
+                except Exception as exc:
+                    aviso_local = (
+                        "O repositório remoto foi excluído, mas a pasta local não pôde ser "
+                        "removida automaticamente.\n\n"
+                        f"Pasta: {local}\n\n"
+                        f"Motivo: {exc}\n\n"
+                        "Use o botão 'Limpar clone local órfão...' para tentar novamente."
+                    )
+
         atualizar_lista(combo)
+
+        if aviso_local:
+            messagebox.showwarning(
+                "Remoto excluído; pasta local preservada",
+                aviso_local,
+                parent=parent,
+            )
+        else:
+            messagebox.showinfo(
+                "Excluído",
+                f"Repositório remoto excluído:\n{repo}{nota}",
+                parent=parent,
+            )
+    except Exception as exc:
+        messagebox.showerror("Erro", str(exc), parent=parent)
+
+
+def limpar_clone_orfao(parent: tk.Misc, pasta_var: tk.StringVar) -> None:
+    try:
+        base = Path(pasta_var.get()).expanduser().resolve()
+        if not base.is_dir():
+            raise RuntimeError("Escolha uma pasta local de repositórios válida.")
+
+        escolhido = filedialog.askdirectory(
+            title="Selecione o clone local órfão",
+            initialdir=str(base),
+            mustexist=True,
+            parent=parent,
+        )
+        if not escolhido:
+            return
+
+        local = Path(escolhido).resolve()
+        try:
+            local.relative_to(base)
+        except ValueError:
+            raise RuntimeError(
+                "Por segurança, selecione uma pasta dentro da pasta local dos repositórios."
+            )
+
+        validar_clone_local(local)
+
+        digitado = simpledialog.askstring(
+            "Confirmar remoção local",
+            f"Remover somente a pasta local:\n\n{local}\n\n"
+            f"Digite exatamente {local.name} para confirmar:",
+            parent=parent,
+        )
+        if digitado != local.name:
+            messagebox.showinfo("Cancelado", "Remoção local cancelada.", parent=parent)
+            return
+
+        remover_clone_local(local)
+        messagebox.showinfo(
+            "Pasta local removida",
+            f"Clone local removido:\n{local}",
+            parent=parent,
+        )
     except Exception as exc:
         messagebox.showerror("Erro", str(exc), parent=parent)
 
@@ -278,9 +448,11 @@ def excluir(parent: tk.Misc, combo: ttk.Combobox, local_var: tk.BooleanVar, past
 def main() -> None:
     root = tk.Tk()
     root.title("VBA - Gerenciador de automações")
-    root.minsize(650, 470)
+    root.minsize(650, 520)
+
     cfg = carregar_config()
     base_padrao = cfg.get("base_dir", str(Path.home() / "Documents"))
+
     nome = tk.StringVar()
     descricao = tk.StringVar()
     visibilidade = tk.StringVar(value="private")
@@ -290,8 +462,10 @@ def main() -> None:
 
     frame = ttk.Frame(root, padding=16)
     frame.pack(fill="both", expand=True)
+
     ttk.Label(frame, text="Automações VBA", font=("Segoe UI", 16, "bold")).pack(anchor="w")
     ttk.Label(frame, text=f"Template: {TEMPLATE_REPO}").pack(anchor="w", pady=(0, 12))
+
     abas = ttk.Notebook(frame)
     abas.pack(fill="both", expand=True)
 
@@ -301,38 +475,83 @@ def main() -> None:
     abas.add(remover, text="Excluir automação")
 
     ttk.Label(nova, text="Nome").grid(row=0, column=0, sticky="w")
-    ttk.Entry(nova, textvariable=nome).grid(row=1, column=0, columnspan=3, sticky="ew", pady=(2, 10))
+    ttk.Entry(nova, textvariable=nome).grid(
+        row=1, column=0, columnspan=3, sticky="ew", pady=(2, 10)
+    )
+
     ttk.Label(nova, text="Descrição (opcional)").grid(row=2, column=0, sticky="w")
-    ttk.Entry(nova, textvariable=descricao).grid(row=3, column=0, columnspan=3, sticky="ew", pady=(2, 10))
-    ttk.Radiobutton(nova, text="Privado", variable=visibilidade, value="private").grid(row=4, column=0, sticky="w")
-    ttk.Radiobutton(nova, text="Público", variable=visibilidade, value="public").grid(row=4, column=1, sticky="w")
-    ttk.Checkbutton(nova, text="Manter licença MIT", variable=manter_mit).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 10))
+    ttk.Entry(nova, textvariable=descricao).grid(
+        row=3, column=0, columnspan=3, sticky="ew", pady=(2, 10)
+    )
+
+    ttk.Radiobutton(
+        nova, text="Privado", variable=visibilidade, value="private"
+    ).grid(row=4, column=0, sticky="w")
+    ttk.Radiobutton(
+        nova, text="Público", variable=visibilidade, value="public"
+    ).grid(row=4, column=1, sticky="w")
+
+    ttk.Checkbutton(
+        nova, text="Manter licença MIT", variable=manter_mit
+    ).grid(row=5, column=0, columnspan=3, sticky="w", pady=(4, 10))
+
     ttk.Label(nova, text="Pasta local dos repositórios").grid(row=6, column=0, sticky="w")
-    ttk.Entry(nova, textvariable=pasta).grid(row=7, column=0, columnspan=2, sticky="ew")
-    ttk.Button(nova, text="Escolher...", command=lambda: escolher_pasta(pasta)).grid(row=7, column=2, padx=(8, 0))
+    ttk.Entry(nova, textvariable=pasta).grid(
+        row=7, column=0, columnspan=2, sticky="ew"
+    )
     ttk.Button(
-        nova, text="Criar repositório e clone local",
-        command=lambda: criar(root, nome, descricao, visibilidade, pasta, manter_mit),
+        nova, text="Escolher...", command=lambda: escolher_pasta(pasta)
+    ).grid(row=7, column=2, padx=(8, 0))
+
+    ttk.Button(
+        nova,
+        text="Criar repositório e clone local",
+        command=lambda: criar(
+            root, nome, descricao, visibilidade, pasta, manter_mit
+        ),
     ).grid(row=8, column=0, columnspan=3, sticky="ew", pady=(18, 0))
+
     nova.columnconfigure(0, weight=1)
     nova.columnconfigure(1, weight=1)
 
     ttk.Label(remover, text="Repositório").grid(row=0, column=0, sticky="w")
     combo = ttk.Combobox(remover, state="readonly")
     combo.grid(row=1, column=0, sticky="ew", pady=(2, 10))
-    ttk.Button(remover, text="Atualizar lista", command=lambda: atualizar_lista(combo)).grid(row=1, column=1, padx=(8, 0))
-    ttk.Checkbutton(
-        remover, text="Também remover o clone local correspondente", variable=apagar_local
-    ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 14))
     ttk.Button(
-        remover, text="Excluir repositório selecionado",
+        remover, text="Atualizar lista", command=lambda: atualizar_lista(combo)
+    ).grid(row=1, column=1, padx=(8, 0))
+
+    ttk.Checkbutton(
+        remover,
+        text="Também remover o clone local correspondente",
+        variable=apagar_local,
+    ).grid(row=2, column=0, columnspan=2, sticky="w", pady=(4, 14))
+
+    ttk.Button(
+        remover,
+        text="Excluir repositório selecionado",
         command=lambda: excluir(root, combo, apagar_local, pasta),
     ).grid(row=3, column=0, columnspan=2, sticky="ew")
+
+    ttk.Separator(remover, orient="horizontal").grid(
+        row=4, column=0, columnspan=2, sticky="ew", pady=18
+    )
+
+    ttk.Button(
+        remover,
+        text="Limpar clone local órfão...",
+        command=lambda: limpar_clone_orfao(root, pasta),
+    ).grid(row=5, column=0, columnspan=2, sticky="ew")
+
     ttk.Label(
         remover,
-        text="O template fabio-ara/VBA é protegido contra exclusão por esta ferramenta.",
+        text=(
+            "Use esta opção se o repositório remoto já tiver sido excluído, mas a pasta "
+            "local tiver permanecido. O template fabio-ara/VBA é protegido."
+        ),
         wraplength=540,
-    ).grid(row=4, column=0, columnspan=2, sticky="w", pady=(14, 0))
+    ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(10, 0))
+
     remover.columnconfigure(0, weight=1)
 
     root.after(250, lambda: atualizar_lista(combo))

@@ -1,0 +1,17 @@
+# Textos versionados em LF; os scripts Python funcionam normalmente no Windows.
+* text=auto eol=lf
+
+*.bas text eol=lf
+*.cls text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+
+# Binários, caso algum seja deliberadamente versionado por exceção.
+*.frx binary
+*.xls binary
+*.xlsx binary
+*.xlsm binary
+*.xlsb binary
+*.xlam binary

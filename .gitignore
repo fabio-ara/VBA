@@ -1,0 +1,42 @@
+# Excel e artefatos binários locais
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.xlam
+*.xltm
+*.frx
+~$*
+
+# Dados e exportações locais
+*.csv
+*.tsv
+*.pdf
+*.log
+*.tmp
+*.bak
+
+# Python local
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Ambiente e credenciais
+.env
+.env.*
+*.pem
+*.key
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Evidências locais potencialmente sensíveis
+local/
+artifacts/
+reports/
+
+# O código, documentação, scripts e configurações do repositório permanecem rastreáveis.
